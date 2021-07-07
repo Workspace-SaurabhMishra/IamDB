@@ -9,5 +9,6 @@ urlpatterns = [
     path('search', views.search),
     path('update', views.update),
     path('delete', views.delete),
+    path('signout', views.signout),
     path('fetch_all', views.fetch_all)
 ]

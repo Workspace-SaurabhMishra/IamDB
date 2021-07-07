@@ -3,6 +3,7 @@ from django.http import HttpResponse, JsonResponse
 from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
 from IamDB_A.models import movie
+import re
 
 
 # Create your views here.
@@ -21,11 +22,15 @@ def signup(request):
             username = credentials["username"]
             password = credentials["password"]
             email = credentials["email"]
+
+            regex_object = re.compile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$")
+            if len(regex_object.findall(email)) == 0:
+                return "Invalid Email"
             try:
                 User.objects.get(username=username)
-                return 'User already exists'
+                return "user already exists"
             except:
-                new_user = User.objects.create_user(username, email, password)
+                new_user = User.objects.create_superuser(username, email, password)
                 new_user.save()
                 return True
         else:
@@ -33,176 +38,261 @@ def signup(request):
 
     x = serialize(serialized_data)
     if x == True:
-        data["response"] = "Succesfully registered User"
         pk = User.objects.get(username=serialized_data['username']).pk
         token = Token.objects.get(user=pk).key
-        data["token"] = token
+        data = {"response": "Succesfully registered User",
+                "token": token
+                }
+        status = 200
 
-    elif x == "User already exists":
+    elif x == "user already exists":
         data = {
-            "response": "User Already exists"
+            "response": "User Already Exists"
         }
+        status = 409
+
+    elif x == "Invalid Email":
+        data = {
+            "response": "Invalid Email"
+        }
+        status = 422
 
     else:
         data = {
             "response": "Something is missing from Username, Password, Email, Please provide that also!!"
         }
+        status = 400
 
-    return JsonResponse(data)
+    return JsonResponse(data, status=status)
 
 
 @api_view(['POST'])
 def search(request):
-    data = request.data
-    search_key = data['search-key']
-    search_result = []
-    try:
-        search_result.extend(movie.objects.filter(_99popularity__icontains=search_key))
-    except:
-        pass
-    try:
-        search_result.extend(movie.objects.filter(genre__icontains=search_key))
-    except:
-        pass
-    try:
-        search_result.extend(movie.objects.filter(name__icontains=search_key))
-    except:
-        pass
-    try:
-        search_result.extend(movie.objects.filter(director__icontains=search_key))
-    except:
-        pass
-    try:
-        search_result.extend(movie.objects.filter(score__icontains=search_key))
-    except:
-        pass
+    recv_data = request.data
+    search_key = recv_data.get('search-key')
+    auth_token = recv_data.get("token")
 
-    search_result = set(search_result)
-    temp = []
-    for i in search_result:
-        a = {}
-        a['movie-name'] = i.name
-        a['99popularity'] = i._99popularity
-        a['imdb-score'] = i.score
-        a['director'] = i.director
-        a['genre'] = i.genre
-        temp.append(a)
-    search_result = {
-        'data': temp
-    }
-    return JsonResponse(search_result)
+    x = Token.objects.filter(key=auth_token)
+    if auth_token is None or len(x) != 1:
+        data = {
+            "response": "You're not authenticated to access this feature"
+        }
+        status = 401
+
+    elif search_key is None:
+        data = {
+            "response": "Search Key not provided"
+        }
+        status = 400
+
+    else:
+        data = []
+        try:
+            data.extend(movie.objects.filter(_99popularity__icontains=search_key))
+        except:
+            pass
+        try:
+            data.extend(movie.objects.filter(genre__icontains=search_key))
+        except:
+            pass
+        try:
+            data.extend(movie.objects.filter(name__icontains=search_key))
+        except:
+            pass
+        try:
+            data.extend(movie.objects.filter(director__icontains=search_key))
+        except:
+            pass
+        try:
+            data.extend(movie.objects.filter(score__icontains=search_key))
+        except:
+            pass
+
+        data = set(data)
+        temp = []
+        for i in data:
+            a = {}
+            a['movie-name'] = i.name
+            a['99popularity'] = i._99popularity
+            a['imdb-score'] = i.score
+            a['director'] = i.director
+            a['genre'] = i.genre
+            temp.append(a)
+        data = {
+            'data': temp
+        }
+        status = 200
+
+    return JsonResponse(data, status=status)
 
 
-@api_view(['POST'])
+@api_view(['PATCH'])
 def update(request):
-    data = request.data
-    update_parameter = data['parameter']
-    update_key = data['key']
-    update_data = data['data']
+    recv_data = request.data
+    update_parameter = recv_data['parameter']
+    update_key = recv_data['key']
+    update_data = recv_data['data']
+    auth_token = recv_data.get("token")
 
-    if update_parameter == '99popularity':
-        record_instances = movie.objects.filter(_99popularity__icontains=update_key)
-
-    elif update_parameter == 'movie-name':
-        record_instances = movie.objects.filter(name__icontains=update_key)
-
-    elif update_parameter == 'genre':
-        record_instances = movie.objects.filter(genre__icontains=update_key)
-
-    elif update_parameter == 'director':
-        record_instances = movie.objects.filter(director__icontains=update_key)
-
-    elif update_parameter == 'imdb-score':
-        record_instances = movie.objects.filter(score__icontains=update_key)
+    x = Token.objects.filter(key=auth_token)
+    if auth_token is None or len(x) != 1:
+        data = {
+            "response": "You're not authenticated to access this feature"
+        }
+        status=401
 
     else:
+        if update_parameter == '99popularity':
+            record_instances = movie.objects.filter(_99popularity__icontains=update_key)
+
+        elif update_parameter == 'movie-name':
+            record_instances = movie.objects.filter(name__icontains=update_key)
+
+        elif update_parameter == 'genre':
+            record_instances = movie.objects.filter(genre__icontains=update_key)
+
+        elif update_parameter == 'director':
+            record_instances = movie.objects.filter(director__icontains=update_key)
+
+        elif update_parameter == 'imdb-score':
+            record_instances = movie.objects.filter(score__icontains=update_key)
+
+        else:
+            data = {
+                "response": "Invalid updation parameter"
+            }
+            status = 400
+            return JsonResponse(data, status=status)
+
+        for record_instance in record_instances:
+            try:
+                record_instance._99popularity = update_data['99popularity']
+            except:
+                pass
+
+            try:
+                record_instance.name = update_data['movie-name']
+            except:
+                pass
+
+            try:
+                record_instance.director = update_data['director']
+            except:
+                pass
+
+            try:
+                record_instance.genre = update_data['genre']
+            except:
+                pass
+
+            try:
+                record_instance.score = update_data['imdb-score']
+            except:
+                pass
+
+            record_instance.save()
+
         data = {
-            "response": "Invalid updation parameter"
+            "response": 'Updation Successful'
         }
-        return JsonResponse(data)
+        status = 200
 
-    for record_instance in record_instances:
-        try:
-            record_instance._99popularity = update_data['99popularity']
-        except:
-            pass
+    return JsonResponse(data, status=status)
 
-        try:
-            record_instance.name = update_data['movie-name']
-        except:
-            pass
 
-        try:
-            record_instance.director = update_data['director']
-        except:
-            pass
+@api_view(['DELETE'])
+def delete(request):
+    recv_data = request.data
+    parameter = recv_data['parameter']
+    key = recv_data['key']
+    auth_token = recv_data.get("token")
 
-        try:
-            record_instance.genre = update_data['genre']
-        except:
-            pass
+    x = Token.objects.filter(key=auth_token)
+    if auth_token is None or len(x) != 1:
+        data = {
+            "response": "You're not authenticated to access this feature"
+        }
+        status = 401
 
-        try:
-            record_instance.score = update_data['imdb-score']
-        except:
-            pass
+    else:
+        if parameter == '99popularity':
+            record_instances = movie.objects.filter(_99popularity__icontains=key)
 
-        record_instance.save()
+        elif parameter == 'movie-name':
+            record_instances = movie.objects.filter(name__icontains=key)
 
-    data = {
-        "response": 'Updation Successful'
-    }
+        elif parameter == 'genre':
+            record_instances = movie.objects.filter(genre__icontains=key)
 
-    return JsonResponse(data)
+        elif parameter == 'director':
+            record_instances = movie.objects.filter(director__icontains=key)
+
+        elif parameter == 'imdb-score':
+            record_instances = movie.objects.filter(score__icontains=key)
+
+        else:
+            data = {
+                "response": "Invalid deletion parameter"
+            }
+            status = 400
+            return JsonResponse(data, status=status)
+
+        for i in record_instances:
+            i.delete()
+        data = {
+            "response": "All matching records are deleted"
+        }
+        status = 200
+
+    return JsonResponse(data,status=status)
 
 
 @api_view(['POST'])
-def delete(request):
-    data = request.data
-    parameter = data['parameter']
-    key = data['key']
+def fetch_all(request):
+    recv_data = request.data
+    auth_token = recv_data.get("token")
 
-    if parameter == '99popularity':
-        record_instances = movie.objects.filter(_99popularity__icontains=key)
+    x = Token.objects.filter(key=auth_token)
+    if auth_token is None or len(x) != 1:
+        data = {
+            "response": "You're not authenticated to access this feature"
+        }
+        status = 401
+    else:
+        temp = []
+        for i in movie.objects.all():
+            a = {}
+            a['movie-name'] = i.name
+            a['99popularity'] = i._99popularity
+            a['imdb-score'] = i.score
+            a['director'] = i.director
+            a['genre'] = i.genre
+            temp.append(a)
 
-    elif parameter == 'movie-name':
-        record_instances = movie.objects.filter(name__icontains=key)
+        data = {
+            "data": temp
+        }
+        status = 200
+    return JsonResponse(data, status=status)
 
-    elif parameter == 'genre':
-        record_instances = movie.objects.filter(genre__icontains=key)
 
-    elif parameter == 'director':
-        record_instances = movie.objects.filter(director__icontains=key)
+@api_view(['POST'])
+def signout(request):
+    recv_data = request.data
+    auth_token = recv_data.get("token")
 
-    elif parameter == 'imdb-score':
-        record_instances = movie.objects.filter(score__icontains=key)
+    x = Token.objects.filter(key=auth_token)
+    if auth_token is None or len(x) != 1:
+        data = {
+            "response": "Invalid User"
+        }
+        status = 401
 
     else:
+        x.delete()
         data = {
-            "response": "Invalid deletion parameter"
+            "response": "Logged Out"
         }
-        return JsonResponse(data)
+        status = 200
 
-    record_instances.delete()
-    data = {
-        "response": "All matching records are deleted"
-    }
-    return JsonResponse(data)
-
-
-@api_view(['GET'])
-def fetch_all(request):
-    data = []
-    for i in movie.objects.all():
-        a = {}
-        a['movie-name'] = i.name
-        a['99popularity'] = i._99popularity
-        a['imdb-score'] = i.score
-        a['director'] = i.director
-        a['genre'] = i.genre
-        data.append(a)
-
-    data = {
-        "data": data
-    }
-    return JsonResponse(data)
+    return JsonResponse(data, status=status)

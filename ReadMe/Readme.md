@@ -1,14 +1,26 @@
-# IamDB API Based Documentation
+# IamDB API Documentation
 
-### 1. Recommended System Configurations
+## 1. Recommended System Configurations
 
 > - BEFORE USING ACTIVATE VENV
 > - UBUNTU PREFERRED
->> - Because submitted project uses Ubuntu based Virtual Environment.
-> - CONFIGURATION FOR DIFFERENT OS
->> - Create a Virtual Environment
->> - Install Requirements.txt
->> - You're good to go.
+>> - _Because submitted project uses Ubuntu based Virtual Environment._
+> ### Configurations for different OS
+>> - _Create a Virtual Environment_
+>> - _Install Requirements.txt_
+>> - _You're good to go._
+> ### Important Informations
+>> - _A valid token is "8c84460c59e563ef525b49852dffa0034f84ef36" but Do not signout from "saurabh"._
+>> - _You can signout from "saurabh11", "saurabh23", "saurabh90"._
+>> - _While using Test cases delete scenerio is implemented and reason is metioned there_
+
+> ### Some Features from my side
+>> - _Search doesn't rely on parameter, any similar(not exact) match will be displayed._
+>> - _Without Tokens you can't access any feature except sampleAPI._
+>> - _Tokens will only be generated while signUP and signIN._
+>> - _After signOUT respective Token will be destroyed, so they can be used again only after new signIN._
+>> - _All the relevant HHTP status code will be sent automatically from server(200 OK, 400 Bad Request, 409 Data Conflict, 401 Unauthorized etc.)_
+
 
 ### 2. IamDB app URL Structure
 
@@ -17,10 +29,10 @@
 | Sample API | http://127.0.0.1:8000/app/sample | GET | HTTPResponse |
 | New User/Sign UP | http://127.0.0.1:8000/app/signup | POST | JSON |
 | Sign IN | http://127.0.0.1:8000/app/signin | POST | JSON |
-| Fetch All | http://127.0.0.1:8000/app/fetch_all | GET | JSON |
+| Fetch All | http://127.0.0.1:8000/app/fetch_all | POST | JSON |
 | Search | http://127.0.0.1:8000/app/Search | POST | JSON |
-| Update | http://127.0.0.1:8000/app/update | POST | JSON |
-| Delete | http://127.0.0.1:8000/app/delete | POST | JSON |
+| Update | http://127.0.0.1:8000/app/update | PATCH | JSON |
+| Delete | http://127.0.0.1:8000/app/delete | DELETE | JSON |
 
 ### 3. Utility URL Structure
 
@@ -87,7 +99,8 @@
 >   http://127.0.0.1:8000/app/search
 > with POST method
 > {
->   "search-key": "<any keyword like 'charlies'>"
+>   "search-key": "<Any keyword like 'charlies'>",
+>   "token": "<Valid token>"
 > }
 > ```
 > - SAMPLE OUTPUT
@@ -100,13 +113,14 @@
 > ```
 > Hit 
 >   http://127.0.0.1:8000/app/update
-> with POST method
+> with PATCH method
 > {
 >    "parameter":"director",
 >    "key": "<director's name>",
 >    "data": {
 >        "movie-name":"<new movie-name>"
->    }
+>    },
+>    "token": "<Valid Token>"
 > }
 > ```
 > - SAMPLE OUTPUT
@@ -115,14 +129,15 @@
 
 #### _NOTE : Handled invalid parameter passing, Also only provided details will be updated._
 
-> ####Update
+> ####Delete
 > ```
 > Hit 
 >   http://127.0.0.1:8000/app/delete
-> with POST method
+> with DELETE method
 > {
 >    "parameter":"director",
->    "key": "<director's name>"
+>    "key": "<director's name>",
+>    "token": "<Valid Token>"
 > }
 > ```
 > - SAMPLE OUTPUT
@@ -131,21 +146,34 @@
 
 #### _NOTE : All records that contain similar string in it according to parameter passed will be deleted._
 
+> ####SignOUT
+> ```
+> Hit 
+>   http://127.0.0.1:8000/app/delete
+> with POST method
+> {
+>    "token": "<Valid Token>"
+> }
+> ```
+> - SAMPLE OUTPUT
+>
+![Alt text](./signout_response.png)
+
+#### _NOTE : All records that contain similar string in it according to parameter passed will be deleted._
 
 > ####Fetch All
 > ```
 > Hit 
 >   http://127.0.0.1:8000/app/fetch_all
-> with GET method
+> with POST method
+> {
+>   "token": "<valid Token>"
+> }
 > ```
 > - SAMPLE OUTPUT
 >
 ![Alt text](./fetch_all_response.png)
 
 > ###NOTE
->> - #### Superuser or Admins has been kept inaccessable from API access because of the security reasons and only accessed from browser.
->> - #### Only Normal users can login using API.
-
-
-
+>> - #### Only Superusers can login using API.
 
